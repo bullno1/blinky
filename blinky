@@ -6,8 +6,10 @@ NUM_NOTIFICATIONS=0
 
 main() {
 	LOCKFILE=/tmp/blinky.lock
+	PIDFILE=/tmp/blinky.pid
 	INTERVAL=1.2
 	DAEMONIZE=no
+	KILL=no
 
 	for i in "$@"
 	do
@@ -15,22 +17,27 @@ main() {
 			-l=*|--lockfile=*)
 				LOCKFILE="${i#*=}"
 				;;
+			-p=*|--pid-file=*)
+				PIDFILE="${i#*=}"
+				;;
 			-i=*|--interval=*)
 				INTERVAL="${i#*=}"
+				;;
+			-k|--kill)
+				KILL=yes
 				;;
 		esac
 		shift
 	done
 
-	(
-		flock -x -n 200 || exit 0
-		echo $$ >&200
+	if [ $KILL == "yes" ]; then
+		exec kill `cat $PIDFILE`
+	fi
 
-		blinky
-	) 200> $LOCKFILE
-}
+	exec 9> $LOCKFILE
+	flock -x -n 9 || exit 0
+	echo $$ > $PIDFILE
 
-blinky() {
 	dbus-monitor \
 		--profile \
 		"interface='org.freedesktop.Notifications',type='method_call',member='Notify'" \
