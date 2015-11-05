@@ -8,10 +8,10 @@ main() {
 	LOCKFILE=/tmp/blinky.lock
 	PIDFILE=/tmp/blinky.pid
 	INTERVAL=1.2
+	LEDNAME="Scroll Lock"
 	KILL=no
 
-	echo A >> /tmp/trace
-	for i in "$@"
+	for i in "$*"
 	do
 		case $i in
 			-l=*|--lock-file=*)
@@ -23,12 +23,15 @@ main() {
 			-i=*|--interval=*)
 				INTERVAL="${i#*=}"
 				;;
+			-n=*|--led-name=*)
+				LEDNAME="${i#*=}"
+				;;
 			-k|--kill)
 				KILL=yes
 				;;
 		esac
 		shift
-	done
+	done || true
 
 	if [ $KILL == "yes" ]; then
 		exec kill `cat $PIDFILE`
@@ -94,11 +97,11 @@ blinker() {
 }
 
 led_on() {
-	xset led named "Scroll Lock"
+	xset led named "$LEDNAME"
 }
 
 led_off() {
-	xset -led named "Scroll Lock"
+	xset -led named "$LEDNAME"
 }
 
 main $@
