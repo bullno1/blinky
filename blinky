@@ -8,13 +8,13 @@ main() {
 	LOCKFILE=/tmp/blinky.lock
 	PIDFILE=/tmp/blinky.pid
 	INTERVAL=1.2
-	DAEMONIZE=no
 	KILL=no
 
+	echo A >> /tmp/trace
 	for i in "$@"
 	do
 		case $i in
-			-l=*|--lockfile=*)
+			-l=*|--lock-file=*)
 				LOCKFILE="${i#*=}"
 				;;
 			-p=*|--pid-file=*)
