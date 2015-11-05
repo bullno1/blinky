@@ -1,10 +1,36 @@
 #!/bin/bash -e
 
-trap 'kill $(jobs -p) 2> /dev/null' EXIT
+trap 'kill -HUP 0' EXIT
 
 NUM_NOTIFICATIONS=0
 
 main() {
+	LOCKFILE=/tmp/blinky.lock
+	INTERVAL=1.2
+	DAEMONIZE=no
+
+	for i in "$@"
+	do
+		case $i in
+			-l=*|--lockfile=*)
+				LOCKFILE="${i#*=}"
+				;;
+			-i=*|--interval=*)
+				INTERVAL="${i#*=}"
+				;;
+		esac
+		shift
+	done
+
+	(
+		flock -x -n 200 || exit 0
+		echo $$ >&200
+
+		blinky
+	) 200> $LOCKFILE
+}
+
+blinky() {
 	dbus-monitor \
 		--profile \
 		"interface='org.freedesktop.Notifications',type='method_call',member='Notify'" \
@@ -54,9 +80,9 @@ blinker() {
 	while :
 	do
 		led_on
-		sleep 1
+		sleep $INTERVAL
 		led_off
-		sleep 1
+		sleep $INTERVAL
 	done
 }
 
@@ -68,4 +94,4 @@ led_off() {
 	xset -led named "Scroll Lock"
 }
 
-main $*
+main $@
