@@ -1,0 +1,71 @@
+#!/bin/bash -e
+
+trap 'kill $(jobs -p) 2> /dev/null' EXIT
+
+NUM_NOTIFICATIONS=0
+
+main() {
+	dbus-monitor \
+		--profile \
+		"interface='org.freedesktop.Notifications',type='method_call',member='Notify'" \
+		"interface='org.freedesktop.Notifications',type='signal',member='NotificationClosed'" \
+		| while read -r line
+		do
+			EVENT=`echo ${line} | cut -f8 -d' '`
+			case "$EVENT" in
+				Notify)
+					NUM_NOTIFICATIONS=$((${NUM_NOTIFICATIONS} + 1))
+					start_blinking
+					;;
+				NotificationClosed)
+					NUM_NOTIFICATIONS=$((${NUM_NOTIFICATIONS} - 1))
+					# This can happen if we start listening after a notification
+					# has been shown
+					if [ $NUM_NOTIFICATIONS -lt 0 ]; then
+						NUM_NOTIFICATIONS=0
+					fi
+
+					if [ $NUM_NOTIFICATIONS -eq 0 ]; then
+						stop_blinking
+					fi
+					;;
+			esac
+		done
+}
+
+BLINKER_PID=
+
+start_blinking() {
+	if [ -z "$BLINKER_PID" ]; then
+		blinker &
+		BLINKER_PID=$!
+	fi
+}
+
+stop_blinking() {
+	if [ ! -z "$BLINKER_PID" ]; then
+		kill $BLINKER_PID
+		BLINKER_PID=
+		led_off
+	fi
+}
+
+blinker() {
+	while :
+	do
+		led_on
+		sleep 1
+		led_off
+		sleep 1
+	done
+}
+
+led_on() {
+	xset led named "Scroll Lock"
+}
+
+led_off() {
+	xset -led named "Scroll Lock"
+}
+
+main $*
